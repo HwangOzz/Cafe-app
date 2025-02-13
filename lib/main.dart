@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 void main() {
   runApp(MyApp());
@@ -8,51 +10,50 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: ButtonScreen(),
+      home: ImagePickerScreen(),
     );
   }
 }
 
-class ButtonScreen extends StatefulWidget {
+class ImagePickerScreen extends StatefulWidget {
   @override
-  _ButtonScreenState createState() => _ButtonScreenState();
+  _ImagePickerScreenState createState() => _ImagePickerScreenState();
 }
 
-class _ButtonScreenState extends State<ButtonScreen> {
-  String displayText = "버튼을 눌러보세요!";
+class _ImagePickerScreenState extends State<ImagePickerScreen> {
+  File? _image; // 선택한 이미지 파일
 
-  void updateText(String newText) {
-    setState(() {
-      displayText = newText;
-    });
+  // ✅ 갤러리에서 이미지 선택하는 함수
+  Future<void> pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path); // 선택한 이미지를 화면에 표시
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Flutter 버튼 앱 🚀')),
+      appBar: AppBar(title: Text('이미지 선택 앱 🚀')),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(displayText, style: TextStyle(fontSize: 24)), // 변경될 텍스트
-          SizedBox(height: 20), // 간격 추가
+          _image != null
+              ? Image.file(_image!, width: 200, height: 200, fit: BoxFit.cover) // 선택한 이미지 표시
+              : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)),
+
+          SizedBox(height: 20),
+
           ElevatedButton(
-            onPressed: () => updateText("첫 번째 버튼 눌렀어요!"),
-            child: Text("버튼 1"),
-          ),
-          SizedBox(height: 10), // 버튼 간격
-          ElevatedButton(
-            onPressed: () => updateText("두 번째 버튼 눌렀어요!"),
-            child: Text("버튼 2"),
-          ),
-          SizedBox(height: 10), // 버튼 간격
-          ElevatedButton(
-            onPressed: () => updateText("세 번째 버튼 눌렀어요!"),
-            child: Text("버튼 3"),
+            onPressed: pickImage, // ✅ 버튼을 누르면 갤러리에서 이미지 선택
+            child: Text("갤러리에서 이미지 선택"),
           ),
         ],
       ),
     );
   }
 }
-
