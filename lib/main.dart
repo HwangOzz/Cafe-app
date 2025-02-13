@@ -58,7 +58,7 @@ class MainScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => ImagePickerScreen()),
                   );
                 },
-                child: Text("1번 버튼 (이미지 선택)"),
+                child: Text("이미지 선택"),
               ),
               SizedBox(height: 20), // ✅ 버튼 간 간격 조정
               ElevatedButton(
@@ -119,12 +119,25 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       ),
       body: Stack(
         children: [
-          // ✅ 선택한 이미지 또는 기본 텍스트 표시
-          Center(
-            child: _image != null
-                ? Image.file(_image!, width: 250, height: 250, fit: BoxFit.cover) // ✅ 선택한 이미지 표시
-                : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)), // ✅ 이미지가 없을 경우 안내 문구
-          ),
+          // ✅ 선택한 이미지를 핸드폰 화면에 맞게 조정
+          _image != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(15), // ✅ 둥근 모서리 적용
+                  child: Container(
+                    width: double.infinity, // ✅ 화면 전체 너비 사용
+                    height: double.infinity, // ✅ 화면 전체 높이 사용
+                    child: Image.file(
+                      _image!,
+                      fit: BoxFit.cover, // ✅ 화면 크기에 맞게 꽉 차게 조정
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    "이미지를 선택하세요!",
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
 
           // ✅ 버튼을 화면 하단 중앙에 배치
           Align(
