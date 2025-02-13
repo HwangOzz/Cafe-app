@@ -39,18 +39,25 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('이미지 선택 앱 🚀')),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
         children: [
-          _image != null
-              ? Image.file(_image!, width: 200, height: 200, fit: BoxFit.cover) // 선택한 이미지 표시
-              : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)),
+          // ✅ 이미지 중앙 배치
+          Center(
+            child: _image != null
+                ? Image.file(_image!, width: 250, height: 250, fit: BoxFit.cover) // 선택한 이미지 표시
+                : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)),
+          ),
 
-          SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: pickImage, // ✅ 버튼을 누르면 갤러리에서 이미지 선택
-            child: Text("갤러리에서 이미지 선택"),
+          // ✅ 버튼을 화면 하단 중앙에 배치
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 30), // 하단 여백 추가
+              child: ElevatedButton(
+                onPressed: pickImage, // ✅ 버튼을 누르면 갤러리에서 이미지 선택
+                child: Text("갤러리에서 이미지 선택"),
+              ),
+            ),
           ),
         ],
       ),
