@@ -63,9 +63,13 @@ class MainScreen extends StatelessWidget {
               SizedBox(height: 20), // ✅ 버튼 간 간격 조정
               ElevatedButton(
                 onPressed: () {
-                  // ✅ 2번 버튼 (현재 기능 없음)
+                  // ✅ 2번 버튼 → 그리기 화면으로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => DrawScreen()),
+                  );
                 },
-                child: Text("2번 버튼"),
+                child: Text("그림 그리기"),
               ),
               SizedBox(height: 20), // ✅ 버튼 간 간격 조정
               ElevatedButton(
@@ -82,8 +86,85 @@ class MainScreen extends StatelessWidget {
     );
   }
 }
+// ✅ 그리기 화면 (DrawScreen)
+class DrawScreen extends StatefulWidget {
+  @override
+  _DrawScreenState createState() => _DrawScreenState();
+}
 
-// ✅ 이미지 선택 화면
+class _DrawScreenState extends State<DrawScreen> {
+  List<Offset?> points = []; // ✅ 사용자가 터치한 점들의 리스트
+
+  @override
+  Widget build(BuildContext context) {
+    double appBarHeight = MediaQuery.of(context).padding.top + kToolbarHeight; // ✅ AppBar + StatusBar 높이
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("그리기 화면"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.clear),
+            onPressed: () {
+              setState(() {
+                points.clear(); // ✅ 그림 초기화 (모든 점 삭제)
+              });
+            },
+          ),
+        ],
+      ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent, // ✅ 터치 감지 문제 해결
+        onPanUpdate: (details) {
+          setState(() {
+            RenderBox box = context.findRenderObject() as RenderBox;
+            Offset localPosition = box.globalToLocal(details.globalPosition);
+            points.add(Offset(localPosition.dx, localPosition.dy - appBarHeight)); // ✅ AppBar 높이만큼 y좌표 조정
+          });
+        },
+        onPanEnd: (details) {
+          setState(() {
+            points.add(null); // ✅ 손을 떼면 새로운 선을 그릴 수 있도록 `null` 추가
+          });
+        },
+        child: CustomPaint(
+          painter: DrawPainter(points), // ✅ 그림을 그리는 Painter 적용
+          size: Size.infinite,
+        ),
+      ),
+    );
+  }
+}
+
+// ✅ 그림을 그리는 Painter 클래스
+class DrawPainter extends CustomPainter {
+  List<Offset?> points; // ✅ 터치한 점들의 리스트
+
+  DrawPainter(this.points);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    Paint paint = Paint()
+      ..color = Colors.black // ✅ 선 색상을 검은색으로 설정
+      ..strokeCap = StrokeCap.round // ✅ 선 끝을 둥글게 설정
+      ..strokeWidth = 5.0; // ✅ 선 두께 설정
+
+    for (int i = 0; i < points.length - 1; i++) {
+      if (points[i] != null && points[i + 1] != null) {
+        canvas.drawLine(points[i]!, points[i + 1]!, paint); // ✅ 두 점을 잇는 선을 그림
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return true; // ✅ 변경 사항이 있을 때마다 다시 그림
+  }
+}
+
+
+
+// ✅ 이미지 선택 화면 (1번 버튼 기능)
 class ImagePickerScreen extends StatefulWidget {
   @override
   _ImagePickerScreenState createState() => _ImagePickerScreenState();
@@ -100,7 +181,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
     if (pickedFile != null) {
       setState(() {
-        _image = File(pickedFile.path); // ✅ 선택한 이미지 파일을 `_image` 변수에 저장
+        _image = File(pickedFile.path); // ✅ 선택한 이미지를 `_image` 변수에 저장
       });
     }
   }
@@ -109,43 +190,25 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('이미지 선택 화면'), // ✅ 화면 제목
+        title: Text('이미지 선택 화면'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back), // ✅ 뒤로 가기 아이콘
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context); // ✅ 현재 화면을 닫고 메인 화면으로 이동
+            Navigator.pop(context);
           },
         ),
       ),
       body: Stack(
         children: [
-          // ✅ 선택한 이미지를 핸드폰 화면에 맞게 조정
           _image != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(15), // ✅ 둥근 모서리 적용
-                  child: Container(
-                    width: double.infinity, // ✅ 화면 전체 너비 사용
-                    height: double.infinity, // ✅ 화면 전체 높이 사용
-                    child: Image.file(
-                      _image!,
-                      fit: BoxFit.cover, // ✅ 화면 크기에 맞게 꽉 차게 조정
-                    ),
-                  ),
-                )
-              : Center(
-                  child: Text(
-                    "이미지를 선택하세요!",
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-
-          // ✅ 버튼을 화면 하단 중앙에 배치
+              ? Image.file(_image!, width: double.infinity, height: double.infinity, fit: BoxFit.cover)
+              : Center(child: Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18))),
           Align(
-            alignment: Alignment.bottomCenter, // ✅ 버튼을 화면 아래쪽 중앙에 정렬
+            alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 30), // ✅ 버튼과 화면 하단 간격 추가
+              padding: const EdgeInsets.only(bottom: 30),
               child: ElevatedButton(
-                onPressed: pickImage, // ✅ 버튼을 누르면 `pickImage()` 실행
+                onPressed: pickImage,
                 child: Text("갤러리에서 이미지 선택"),
               ),
             ),
