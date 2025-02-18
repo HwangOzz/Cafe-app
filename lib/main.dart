@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
 
 void main() {
   runApp(MyApp());
@@ -172,7 +174,7 @@ class DrawScreen extends StatefulWidget {
 }
 
 class _DrawScreenState extends State<DrawScreen> {
-  List<DrawPath> paths = []; // ✅ Path 기반 최적화
+  List<DrawPath> paths = []; // Path 기반 최적화
   Path currentPath = Path();
   Paint currentPaint =
       Paint()
@@ -180,8 +182,11 @@ class _DrawScreenState extends State<DrawScreen> {
         ..strokeWidth = 5.0
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
+
   bool isMenuOpen = false;
   bool isEraserMode = false;
+  ui.Image? backgroundImage; // ✅ 배경 이미지 추가
+  final ImagePicker _picker = ImagePicker(); // ✅ 이미지 선택기 추가
 
   @override
   Widget build(BuildContext context) {
@@ -191,12 +196,22 @@ class _DrawScreenState extends State<DrawScreen> {
         backgroundColor: Colors.brown[300],
         title: Text("그리기 화면"),
         actions: [
+          // ✅ 이미지 가져오기 버튼
+          IconButton(
+            icon: Icon(Icons.image),
+            onPressed: () async {
+              await _pickImage();
+            },
+          ),
+
+          // ✅ 전체 삭제 버튼 (배경 이미지도 지울 수 있도록 변경)
           IconButton(
             icon: Icon(Icons.clear),
             onPressed: () {
               setState(() {
                 paths.clear();
                 currentPath = Path();
+                backgroundImage = null; // 배경 이미지 삭제
               });
             },
           ),
@@ -242,7 +257,12 @@ class _DrawScreenState extends State<DrawScreen> {
                 });
               },
               child: CustomPaint(
-                painter: DrawPainter(paths, currentPath, currentPaint),
+                painter: DrawPainter(
+                  paths,
+                  currentPath,
+                  currentPaint,
+                  backgroundImage,
+                ),
                 size: Size.infinite,
               ),
             ),
@@ -332,6 +352,23 @@ class _DrawScreenState extends State<DrawScreen> {
     );
   }
 
+  // ✅ 갤러리에서 이미지 선택하는 함수
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+    if (pickedFile == null) return;
+
+    File imageFile = File(pickedFile.path);
+    final Uint8List imageBytes = await imageFile.readAsBytes();
+    final ui.Codec codec = await ui.instantiateImageCodec(imageBytes);
+    final ui.FrameInfo frameInfo = await codec.getNextFrame();
+
+    setState(() {
+      backgroundImage = frameInfo.image;
+    });
+  }
+
   Widget _buildColorPalette() {
     List<Color> colors = [
       Colors.black,
@@ -399,11 +436,27 @@ class DrawPainter extends CustomPainter {
   final List<DrawPath> paths;
   final Path currentPath;
   final Paint currentPaint;
+  final ui.Image? backgroundImage; // ✅ 배경 이미지 추가
 
-  DrawPainter(this.paths, this.currentPath, this.currentPaint);
+  DrawPainter(
+    this.paths,
+    this.currentPath,
+    this.currentPaint,
+    this.backgroundImage,
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
+    // ✅ 배경 이미지를 화면에 맞게 조정해서 그리기
+    if (backgroundImage != null) {
+      paintImage(
+        canvas: canvas,
+        rect: Rect.fromLTWH(0, 0, size.width, size.height),
+        image: backgroundImage!,
+        fit: BoxFit.cover,
+      );
+    }
+
     for (var drawPath in paths) {
       canvas.drawPath(drawPath.path, drawPath.paint);
     }
