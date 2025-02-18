@@ -172,17 +172,21 @@ class DrawScreen extends StatefulWidget {
 }
 
 class _DrawScreenState extends State<DrawScreen> {
-  List<Map<String, dynamic>> lines = [];
-  List<Offset?> currentLine = [];
-  Color selectedColor = Colors.black;
-  double brushSize = 5.0;
+  List<DrawPath> paths = []; // ✅ Path 기반 최적화
+  Path currentPath = Path();
+  Paint currentPaint =
+      Paint()
+        ..color = Colors.black
+        ..strokeWidth = 5.0
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
   bool isMenuOpen = false;
-  bool isEraserMode = false; // ✅ 지우개 모드 추가
+  bool isEraserMode = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // ✅ 캔버스 배경을 흰색으로 설정
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.brown[300],
         title: Text("그리기 화면"),
@@ -191,8 +195,8 @@ class _DrawScreenState extends State<DrawScreen> {
             icon: Icon(Icons.clear),
             onPressed: () {
               setState(() {
-                lines.clear();
-                currentLine.clear();
+                paths.clear();
+                currentPath = Path();
               });
             },
           ),
@@ -200,39 +204,45 @@ class _DrawScreenState extends State<DrawScreen> {
       ),
       body: Stack(
         children: [
+          // ✅ RepaintBoundary 추가하여 성능 최적화
           RepaintBoundary(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanStart: (details) {
                 setState(() {
-                  currentLine = [details.localPosition];
+                  currentPath = Path();
+                  currentPath.moveTo(
+                    details.localPosition.dx,
+                    details.localPosition.dy,
+                  );
                 });
               },
               onPanUpdate: (details) {
                 setState(() {
-                  currentLine.add(details.localPosition);
-                  lines.add({
-                    "color":
-                        isEraserMode
-                            ? Colors.white
-                            : selectedColor, // ✅ 지우개 모드일 때 흰색
-                    "brushSize": brushSize,
-                    "points": List<Offset?>.from(currentLine),
-                  });
+                  currentPath.lineTo(
+                    details.localPosition.dx,
+                    details.localPosition.dy,
+                  );
                 });
               },
               onPanEnd: (details) {
                 setState(() {
-                  currentLine.clear();
+                  paths.add(
+                    DrawPath(
+                      path: Path.from(currentPath),
+                      paint:
+                          Paint()
+                            ..color = currentPaint.color
+                            ..strokeWidth = currentPaint.strokeWidth
+                            ..style = PaintingStyle.stroke
+                            ..strokeCap = StrokeCap.round,
+                    ),
+                  );
+                  currentPath = Path();
                 });
               },
               child: CustomPaint(
-                painter: DrawPainter(
-                  lines,
-                  currentLine,
-                  selectedColor,
-                  brushSize,
-                ),
+                painter: DrawPainter(paths, currentPath, currentPaint),
                 size: Size.infinite,
               ),
             ),
@@ -272,7 +282,7 @@ class _DrawScreenState extends State<DrawScreen> {
                         onPressed: () {
                           setState(() {
                             isEraserMode = !isEraserMode;
-                            selectedColor =
+                            currentPaint.color =
                                 isEraserMode ? Colors.white : Colors.black;
                           });
                         },
@@ -347,8 +357,7 @@ class _DrawScreenState extends State<DrawScreen> {
               onTap: () {
                 setState(() {
                   if (!isEraserMode) {
-                    // ✅ 지우개 모드가 아닐 때만 색상 선택 가능
-                    selectedColor = color;
+                    currentPaint.color = color;
                   }
                 });
               },
@@ -359,7 +368,7 @@ class _DrawScreenState extends State<DrawScreen> {
                   color: color,
                   shape: BoxShape.circle,
                   border:
-                      selectedColor == color
+                      currentPaint.color == color
                           ? Border.all(color: Colors.white, width: 3)
                           : null,
                 ),
@@ -371,46 +380,43 @@ class _DrawScreenState extends State<DrawScreen> {
 
   Widget _buildBrushSizeSlider() {
     return Slider(
-      value: brushSize,
+      value: currentPaint.strokeWidth,
       min: 1.0,
       max: 20.0,
       divisions: 19,
-      label: "${brushSize.toStringAsFixed(1)} px",
+      label: "${currentPaint.strokeWidth.toStringAsFixed(1)} px",
       onChanged: (value) {
         setState(() {
-          brushSize = value;
+          currentPaint.strokeWidth = value;
         });
       },
     );
   }
 }
 
-// ✅ 그림을 그리는 Painter 클래스
+// ✅ Path 기반으로 최적화된 Painter 클래스
 class DrawPainter extends CustomPainter {
-  final List<Map<String, dynamic>> lines;
-  final List<Offset?> currentLine;
-  final Color currentColor;
-  final double brushSize;
+  final List<DrawPath> paths;
+  final Path currentPath;
+  final Paint currentPaint;
 
-  DrawPainter(this.lines, this.currentLine, this.currentColor, this.brushSize);
+  DrawPainter(this.paths, this.currentPath, this.currentPaint);
 
   @override
   void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()..strokeCap = StrokeCap.round;
-    for (var line in lines) {
-      paint.color = line["color"];
-      paint.strokeWidth = line["brushSize"];
-      List<Offset?> points = List<Offset?>.from(line["points"]);
-      for (int i = 0; i < points.length - 1; i++) {
-        if (points[i] != null && points[i + 1] != null) {
-          canvas.drawLine(points[i]!, points[i + 1]!, paint);
-        }
-      }
+    for (var drawPath in paths) {
+      canvas.drawPath(drawPath.path, drawPath.paint);
     }
+    canvas.drawPath(currentPath, currentPaint); // 현재 그리는 선도 즉시 반영
   }
 
   @override
   bool shouldRepaint(DrawPainter oldDelegate) => true;
 }
 
-//변경사항 저장용
+// ✅ Path + Paint 정보를 저장하는 클래스
+class DrawPath {
+  final Path path;
+  final Paint paint;
+  DrawPath({required this.path, required this.paint});
+}
