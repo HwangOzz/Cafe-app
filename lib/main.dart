@@ -412,3 +412,5 @@ class DrawPainter extends CustomPainter {
   @override
   bool shouldRepaint(DrawPainter oldDelegate) => true;
 }
+
+//변경사항 저장용
