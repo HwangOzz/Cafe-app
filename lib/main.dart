@@ -22,47 +22,45 @@ class MainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.brown[50], // ✅ 배경을 부드러운 베이지 색상으로 변경
+      backgroundColor: Colors.brown[50],
       body: Center(
         child: Container(
           width: MediaQuery.of(context).size.width * 0.9,
           height: MediaQuery.of(context).size.height * 0.85,
           decoration: BoxDecoration(
-            color: Colors.brown[100], // ✅ 내부 배경 색상 (카페 감성)
+            color: Colors.brown[100],
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
+              BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2),
             ],
           ),
           child: Column(
             children: [
               SizedBox(height: 40),
-              // ✅ "Cafe" 제목을 감성적인 느낌으로 변경
               Text(
                 "Cafe",
                 style: GoogleFonts.pacifico(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
-                  color: Colors.brown[800], // ✅ 따뜻한 브라운 계열 색상
+                  color: Colors.brown[800],
                 ),
               ),
               Spacer(),
-              // ✅ 감성적인 버튼 디자인 적용
               _buildButton(context, "이미지 선택", () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => ImagePickerScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ImagePickerScreen()),
+                );
               }),
               SizedBox(height: 20),
               _buildButton(context, "그림 그리기", () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => DrawScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => DrawScreen()),
+                );
               }),
               SizedBox(height: 20),
-              _buildButton(context, "3번 버튼", () {
-                // ✅ 추가 기능 필요 시 여기에 작성
-              }),
+              _buildButton(context, "기타 기능", () {}),
               SizedBox(height: 40),
             ],
           ),
@@ -71,25 +69,22 @@ class MainScreen extends StatelessWidget {
     );
   }
 
-  // ✅ 감성적인 버튼 디자인 함수
-  Widget _buildButton(BuildContext context, String text, VoidCallback onPressed) {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300), // ✅ 애니메이션 효과 추가
-      curve: Curves.easeInOut,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.brown[300], // ✅ 따뜻한 브라운 계열
-          foregroundColor: Colors.white, // ✅ 텍스트 색상
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20), // ✅ 부드러운 라운드 처리
-          ),
-          padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15), // ✅ 버튼 크기 조정
-        ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+  Widget _buildButton(
+    BuildContext context,
+    String text,
+    VoidCallback onPressed,
+  ) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.brown[300],
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+      ),
+      onPressed: onPressed,
+      child: Text(
+        text,
+        style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -106,7 +101,9 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   Future<void> pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+    );
 
     if (pickedFile != null) {
       setState(() {
@@ -121,17 +118,29 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       backgroundColor: Colors.brown[50], // ✅ 부드러운 배경색 적용
       appBar: AppBar(
         backgroundColor: Colors.brown[300],
-        title: Text('이미지 선택', style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold)),
+        title: Text(
+          '이미지 선택',
+          style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Stack(
         children: [
           Center(
-            child: _image != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.file(_image!, width: 300, height: 300, fit: BoxFit.cover),
-                  )
-                : Text("이미지를 선택하세요!", style: GoogleFonts.lato(fontSize: 18)),
+            child:
+                _image != null
+                    ? ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.file(
+                        _image!,
+                        width: 300,
+                        height: 300,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                    : Text(
+                      "이미지를 선택하세요!",
+                      style: GoogleFonts.lato(fontSize: 18),
+                    ),
           ),
           Align(
             alignment: Alignment.bottomCenter,
@@ -143,7 +152,10 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                 ),
                 onPressed: pickImage,
-                child: Text("갤러리에서 이미지 선택", style: GoogleFonts.lato(fontSize: 16)),
+                child: Text(
+                  "갤러리에서 이미지 선택",
+                  style: GoogleFonts.lato(fontSize: 16),
+                ),
               ),
             ),
           ),
@@ -152,6 +164,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     );
   }
 }
+
 // ✅ 그림 그리기 화면 (DrawScreen)
 class DrawScreen extends StatefulWidget {
   @override
@@ -159,17 +172,20 @@ class DrawScreen extends StatefulWidget {
 }
 
 class _DrawScreenState extends State<DrawScreen> {
-  List<Map<String, dynamic>> lines = []; // ✅ 기존 선들의 색상을 유지하도록 Map 구조 사용
-  List<Offset?> currentLine = []; // ✅ 현재 그리고 있는 선
-  Color selectedColor = Colors.black; // ✅ 기본 색상을 검은색으로 설정
+  List<Map<String, dynamic>> lines = [];
+  List<Offset?> currentLine = [];
+  Color selectedColor = Colors.black;
+  double brushSize = 5.0;
+  bool isMenuOpen = false;
+  bool isEraserMode = false; // ✅ 지우개 모드 추가
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.brown[50],
+      backgroundColor: Colors.white, // ✅ 캔버스 배경을 흰색으로 설정
       appBar: AppBar(
         backgroundColor: Colors.brown[300],
-        title: Text("그리기 화면", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        title: Text("그리기 화면"),
         actions: [
           IconButton(
             icon: Icon(Icons.clear),
@@ -182,96 +198,208 @@ class _DrawScreenState extends State<DrawScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          _buildColorPalette(),
-          Expanded(
+          RepaintBoundary(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanStart: (details) {
                 setState(() {
-                  currentLine = [];
-                  Offset localPosition = details.localPosition; // ✅ 정확한 위치 사용
-                  currentLine.add(localPosition);
+                  currentLine = [details.localPosition];
                 });
               },
               onPanUpdate: (details) {
                 setState(() {
-                  Offset localPosition = details.localPosition; // ✅ 정확한 위치 사용
-                  currentLine.add(localPosition);
+                  currentLine.add(details.localPosition);
+                  lines.add({
+                    "color":
+                        isEraserMode
+                            ? Colors.white
+                            : selectedColor, // ✅ 지우개 모드일 때 흰색
+                    "brushSize": brushSize,
+                    "points": List<Offset?>.from(currentLine),
+                  });
                 });
               },
               onPanEnd: (details) {
                 setState(() {
-                  lines.add({
-                    "color": selectedColor,
-                    "points": List<Offset?>.from(currentLine)
-                  });
                   currentLine.clear();
                 });
               },
               child: CustomPaint(
-                painter: DrawPainter(lines, currentLine, selectedColor),
+                painter: DrawPainter(
+                  lines,
+                  currentLine,
+                  selectedColor,
+                  brushSize,
+                ),
                 size: Size.infinite,
               ),
             ),
           ),
+
+          // ✅ 설정 메뉴 UI
+          if (isMenuOpen)
+            Positioned(
+              right: 20,
+              bottom: 80,
+              child: Material(
+                color: Colors.white,
+                elevation: 5,
+                borderRadius: BorderRadius.circular(15),
+                child: Container(
+                  padding: EdgeInsets.all(10),
+                  width: 200,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "설정",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+
+                      // ✅ 지우개 버튼 추가
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              isEraserMode ? Colors.orange : Colors.brown[300],
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            isEraserMode = !isEraserMode;
+                            selectedColor =
+                                isEraserMode ? Colors.white : Colors.black;
+                          });
+                        },
+                        icon: Icon(Icons.cleaning_services),
+                        label: Text(isEraserMode ? "지우개 ON" : "지우개 OFF"),
+                      ),
+
+                      Divider(),
+                      Text(
+                        "색상 선택",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      _buildColorPalette(),
+                      Divider(),
+                      Text(
+                        "브러쉬 크기",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      _buildBrushSizeSlider(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
+      ),
+
+      // ✅ 설정 버튼 (FAB) - 메뉴 열기/닫기
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.brown[400],
+        child: Icon(
+          isMenuOpen ? Icons.close : Icons.settings,
+          color: Colors.white,
+        ),
+        onPressed: () {
+          setState(() {
+            isMenuOpen = !isMenuOpen;
+          });
+        },
       ),
     );
   }
 
-  // ✅ 색상 선택 팔레트 UI
   Widget _buildColorPalette() {
-    List<Color> colors = [Colors.black, Colors.red, Colors.blue, Colors.green, Colors.orange, Colors.purple];
+    List<Color> colors = [
+      Colors.black,
+      Colors.red,
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.yellow,
+      Colors.pink,
+      Colors.cyan,
+      Colors.teal,
+      Colors.brown,
+      Colors.grey,
+    ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: colors.map((color) {
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                selectedColor = color;
-              });
-            },
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 5),
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: selectedColor == color
-                    ? Border.all(color: Colors.white, width: 3) // ✅ 선택한 색상 강조 표시
-                    : null,
+    return Wrap(
+      spacing: 5,
+      runSpacing: 5,
+      children:
+          colors.map((color) {
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (!isEraserMode) {
+                    // ✅ 지우개 모드가 아닐 때만 색상 선택 가능
+                    selectedColor = color;
+                  }
+                });
+              },
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border:
+                      selectedColor == color
+                          ? Border.all(color: Colors.white, width: 3)
+                          : null,
+                ),
               ),
-            ),
-          );
-        }).toList(),
-      ),
+            );
+          }).toList(),
+    );
+  }
+
+  Widget _buildBrushSizeSlider() {
+    return Slider(
+      value: brushSize,
+      min: 1.0,
+      max: 20.0,
+      divisions: 19,
+      label: "${brushSize.toStringAsFixed(1)} px",
+      onChanged: (value) {
+        setState(() {
+          brushSize = value;
+        });
+      },
     );
   }
 }
 
 // ✅ 그림을 그리는 Painter 클래스
 class DrawPainter extends CustomPainter {
-  final List<Map<String, dynamic>> lines; // ✅ 기존 선 목록 (각 선의 색상을 포함)
-  final List<Offset?> currentLine; // ✅ 현재 그리고 있는 선
-  final Color currentColor; // ✅ 현재 선택된 색상
+  final List<Map<String, dynamic>> lines;
+  final List<Offset?> currentLine;
+  final Color currentColor;
+  final double brushSize;
 
-  DrawPainter(this.lines, this.currentLine, this.currentColor);
+  DrawPainter(this.lines, this.currentLine, this.currentColor, this.brushSize);
 
   @override
   void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 5.0;
-
-    // ✅ 기존 선 그리기 (이전 색상 유지)
+    Paint paint = Paint()..strokeCap = StrokeCap.round;
     for (var line in lines) {
-      paint.color = line["color"]; // ✅ 저장된 선의 색상을 적용
+      paint.color = line["color"];
+      paint.strokeWidth = line["brushSize"];
       List<Offset?> points = List<Offset?>.from(line["points"]);
       for (int i = 0; i < points.length - 1; i++) {
         if (points[i] != null && points[i + 1] != null) {
@@ -279,18 +407,8 @@ class DrawPainter extends CustomPainter {
         }
       }
     }
-
-    // ✅ 현재 그리고 있는 선 그리기 (현재 선택한 색상 적용)
-    paint.color = currentColor;
-    for (int i = 0; i < currentLine.length - 1; i++) {
-      if (currentLine[i] != null && currentLine[i + 1] != null) {
-        canvas.drawLine(currentLine[i]!, currentLine[i + 1]!, paint);
-      }
-    }
   }
 
   @override
-  bool shouldRepaint(DrawPainter oldDelegate) {
-    return true;
-  }
+  bool shouldRepaint(DrawPainter oldDelegate) => true;
 }
