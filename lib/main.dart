@@ -371,7 +371,6 @@ class _DrawScreenState extends State<DrawScreen> {
 
   Future<void> _saveDrawing() async {
     try {
-      // ✅ 저장소 권한 확인 후, 권한이 없으면 저장하지 않음
       if (!await _requestPermission()) {
         print("🚨 저장 중단: 권한이 없습니다.");
         return;
@@ -384,37 +383,69 @@ class _DrawScreenState extends State<DrawScreen> {
         throw Exception("🚨 RenderRepaintBoundary를 찾을 수 없습니다!");
       }
 
+      // ✅ 원본 캔버스를 이미지로 변환
       ui.Image originalImage = await boundary.toImage();
-      ByteData? byteData = await originalImage.toByteData(
+
+      // ✅ 흰색 배경을 추가한 새 캔버스를 생성
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(
+        recorder,
+        Rect.fromLTWH(
+          0,
+          0,
+          originalImage.width.toDouble(),
+          originalImage.height.toDouble(),
+        ),
+      );
+
+      // ✅ 배경을 흰색으로 설정
+      Paint backgroundPaint = Paint()..color = Colors.white;
+      canvas.drawRect(
+        Rect.fromLTWH(
+          0,
+          0,
+          originalImage.width.toDouble(),
+          originalImage.height.toDouble(),
+        ),
+        backgroundPaint,
+      );
+
+      // ✅ 기존 이미지 그림을 복사
+      Paint paint = Paint();
+      canvas.drawImage(originalImage, Offset.zero, paint);
+
+      // ✅ 최종 이미지 생성
+      ui.Image finalImage = await recorder.endRecording().toImage(
+        originalImage.width,
+        originalImage.height,
+      );
+
+      ByteData? byteData = await finalImage.toByteData(
         format: ui.ImageByteFormat.png,
       );
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-      // ✅ 🔹 핸드폰 내부 저장소 경로 직접 지정
-      String cafeFolderPath = "/storage/emulated/0/CAFE"; // 🔥 변경된 저장 경로
+      // ✅ 저장 경로 지정
+      String cafeFolderPath = "/storage/emulated/0/CAFE";
       Directory cafeDir = Directory(cafeFolderPath);
-
-      // ✅ 🔹 CAFE 폴더가 없으면 생성
       if (!await cafeDir.exists()) {
         await cafeDir.create(recursive: true);
       }
 
-      // ✅ 🔹 CAFE 폴더 안에 새로운 이미지 파일 생성
       String filePath =
           "$cafeFolderPath/drawing_${DateTime.now().millisecondsSinceEpoch}.png";
       File file = File(filePath);
       await file.writeAsBytes(pngBytes);
 
       print("✅ 저장 성공! 파일 경로: $filePath");
-
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("저장 완료! 경로: $filePath")));
     } catch (e) {
-      print("저장 실패: $e");
+      print("🚨 저장 실패: $e");
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("저장 중 오류가 발생했습니다. 권한을 확인하세요.")));
+      ).showSnackBar(SnackBar(content: Text("저장 중 오류가 발생했습니다.")));
     }
   }
 
