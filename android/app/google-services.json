@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "411562540379",
+    "project_id": "cafre-6c498",
+    "storage_bucket": "cafre-6c498.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:411562540379:android:1ff2473986338e57ab6e7e",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8pYP3R6EIFxcnHdt_lmCehXleRQzRuls"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
