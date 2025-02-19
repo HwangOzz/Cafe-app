@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
+import 'package:flutter/rendering.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(MyApp());
@@ -187,6 +190,13 @@ class _DrawScreenState extends State<DrawScreen> {
   bool isEraserMode = false;
   ui.Image? backgroundImage; // ✅ 배경 이미지 추가
   final ImagePicker _picker = ImagePicker(); // ✅ 이미지 선택기 추가
+  final GlobalKey _globalKey = GlobalKey(); // 🔹 저장을 위한 GlobalKey 추가
+
+  @override
+  void initState() {
+    super.initState();
+    _requestPermission(); // 앱 실행 시 저장소 권한 요청
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +213,13 @@ class _DrawScreenState extends State<DrawScreen> {
               await _pickImage();
             },
           ),
-
+          // ✅ 저장 버튼 추가 (기존 코드 유지)
+          IconButton(
+            icon: Icon(Icons.save),
+            onPressed: () async {
+              await _saveDrawing();
+            },
+          ),
           // ✅ 전체 삭제 버튼 (배경 이미지도 지울 수 있도록 변경)
           IconButton(
             icon: Icon(Icons.clear),
@@ -221,6 +237,7 @@ class _DrawScreenState extends State<DrawScreen> {
         children: [
           // ✅ RepaintBoundary 추가하여 성능 최적화
           RepaintBoundary(
+            key: _globalKey, // 🔹 저장 기능을 위한 Key 설정
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanStart: (details) {
@@ -350,6 +367,65 @@ class _DrawScreenState extends State<DrawScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _saveDrawing() async {
+    try {
+      // ✅ 저장소 권한 확인
+      if (!await Permission.storage.request().isGranted) {
+        throw Exception("저장소 권한이 없습니다!");
+      }
+
+      RenderRepaintBoundary boundary =
+          _globalKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary;
+
+      if (boundary == null) {
+        throw Exception("RenderRepaintBoundary를 찾을 수 없습니다!");
+      }
+
+      ui.Image originalImage = await boundary.toImage();
+      ByteData? byteData = await originalImage.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // ✅ 🔹 핸드폰 내부 저장소 경로 직접 지정
+      String cafeFolderPath = "/storage/emulated/0/CAFE"; // 🔥 변경된 저장 경로
+      Directory cafeDir = Directory(cafeFolderPath);
+
+      // ✅ 🔹 CAFE 폴더가 없으면 생성
+      if (!await cafeDir.exists()) {
+        await cafeDir.create(recursive: true);
+      }
+
+      // ✅ 🔹 CAFE 폴더 안에 새로운 이미지 파일 생성
+      String filePath =
+          "$cafeFolderPath/drawing_${DateTime.now().millisecondsSinceEpoch}.png";
+      File file = File(filePath);
+      await file.writeAsBytes(pngBytes);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("저장 완료! 경로: $filePath")));
+    } catch (e) {
+      print("저장 실패: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("저장 중 오류가 발생했습니다. 권한을 확인하세요.")));
+    }
+  }
+
+  //저장소 권한 가져오기
+  Future<void> _requestPermission() async {
+    if (await Permission.storage.request().isGranted) {
+      print("저장소 권한 허용됨!");
+    } else {
+      print("저장소 권한이 필요합니다.");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("파일 저장을 위해 저장소 권한을 허용해야 합니다.")));
+    }
   }
 
   // ✅ 갤러리에서 이미지 선택하는 함수
