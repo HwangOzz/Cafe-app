@@ -7,8 +7,12 @@ import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/rendering.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // ✅ Firebase 초기화
   runApp(MyApp());
 }
 
@@ -385,8 +389,6 @@ class _DrawScreenState extends State<DrawScreen> {
 
       // ✅ 원본 캔버스를 이미지로 변환
       ui.Image originalImage = await boundary.toImage();
-
-      // ✅ 흰색 배경을 추가한 새 캔버스를 생성
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(
         recorder,
@@ -398,7 +400,7 @@ class _DrawScreenState extends State<DrawScreen> {
         ),
       );
 
-      // ✅ 배경을 흰색으로 설정
+      // ✅ 흰색 배경 추가 후 그림 복사
       Paint backgroundPaint = Paint()..color = Colors.white;
       canvas.drawRect(
         Rect.fromLTWH(
@@ -409,8 +411,6 @@ class _DrawScreenState extends State<DrawScreen> {
         ),
         backgroundPaint,
       );
-
-      // ✅ 기존 이미지 그림을 복사
       Paint paint = Paint();
       canvas.drawImage(originalImage, Offset.zero, paint);
 
@@ -419,7 +419,6 @@ class _DrawScreenState extends State<DrawScreen> {
         originalImage.width,
         originalImage.height,
       );
-
       ByteData? byteData = await finalImage.toByteData(
         format: ui.ImageByteFormat.png,
       );
@@ -438,9 +437,13 @@ class _DrawScreenState extends State<DrawScreen> {
       await file.writeAsBytes(pngBytes);
 
       print("✅ 저장 성공! 파일 경로: $filePath");
+
+      // ✅ Firebase Storage로 업로드 실행!
+      await _uploadToFirebase(file);
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("저장 완료! 경로: $filePath")));
+      ).showSnackBar(SnackBar(content: Text("저장 완료!")));
     } catch (e) {
       print("🚨 저장 실패: $e");
       ScaffoldMessenger.of(
@@ -498,6 +501,33 @@ class _DrawScreenState extends State<DrawScreen> {
     setState(() {
       backgroundImage = frameInfo.image;
     });
+  }
+
+  Future<void> _uploadToFirebase(File file) async {
+    try {
+      // ✅ Firebase Storage 경로 설정
+      String fileName = "drawing_${DateTime.now().millisecondsSinceEpoch}.png";
+      Reference storageRef = FirebaseStorage.instance.ref().child(
+        "drawings/$fileName",
+      );
+
+      // ✅ 파일 업로드
+      UploadTask uploadTask = storageRef.putFile(file);
+      TaskSnapshot snapshot = await uploadTask;
+
+      // ✅ 업로드 완료 후, 다운로드 URL 가져오기
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+      print("✅ 업로드 완료! 다운로드 URL: $downloadUrl");
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("이미지 업로드 완료!")));
+    } catch (e) {
+      print("🚨 Firebase 업로드 실패: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("업로드 실패! 다시 시도하세요.")));
+    }
   }
 
   Widget _buildColorPalette() {
