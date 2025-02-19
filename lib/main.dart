@@ -371,17 +371,17 @@ class _DrawScreenState extends State<DrawScreen> {
 
   Future<void> _saveDrawing() async {
     try {
-      // ✅ 저장소 권한 확인
-      if (!await Permission.storage.request().isGranted) {
-        throw Exception("저장소 권한이 없습니다!");
+      // ✅ 저장소 권한 확인 후, 권한이 없으면 저장하지 않음
+      if (!await _requestPermission()) {
+        print("🚨 저장 중단: 권한이 없습니다.");
+        return;
       }
 
       RenderRepaintBoundary boundary =
           _globalKey.currentContext?.findRenderObject()
               as RenderRepaintBoundary;
-
       if (boundary == null) {
-        throw Exception("RenderRepaintBoundary를 찾을 수 없습니다!");
+        throw Exception("🚨 RenderRepaintBoundary를 찾을 수 없습니다!");
       }
 
       ui.Image originalImage = await boundary.toImage();
@@ -405,6 +405,8 @@ class _DrawScreenState extends State<DrawScreen> {
       File file = File(filePath);
       await file.writeAsBytes(pngBytes);
 
+      print("✅ 저장 성공! 파일 경로: $filePath");
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("저장 완료! 경로: $filePath")));
@@ -417,15 +419,37 @@ class _DrawScreenState extends State<DrawScreen> {
   }
 
   //저장소 권한 가져오기
-  Future<void> _requestPermission() async {
-    if (await Permission.storage.request().isGranted) {
-      print("저장소 권한 허용됨!");
-    } else {
-      print("저장소 권한이 필요합니다.");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("파일 저장을 위해 저장소 권한을 허용해야 합니다.")));
+  Future<bool> _requestPermission() async {
+    if (Platform.isAndroid) {
+      // ✅ Android 10 이하: storage 권한 확인
+      if (await Permission.storage.isGranted) {
+        print("✅ 저장소 권한이 이미 허용됨");
+        return true;
+      }
+
+      // ✅ Android 11 이상: MANAGE_EXTERNAL_STORAGE 확인
+      if (await Permission.manageExternalStorage.isGranted) {
+        print("✅ 관리 저장소 권한이 이미 허용됨");
+        return true;
+      }
+
+      // ❗ 권한이 없을 경우, 요청하기
+      PermissionStatus storageStatus = await Permission.storage.request();
+      PermissionStatus manageStorageStatus =
+          await Permission.manageExternalStorage.request();
+
+      if (storageStatus.isGranted || manageStorageStatus.isGranted) {
+        print("✅ 새로 저장소 권한이 허용됨!");
+        return true;
+      } else {
+        print("🚨 저장소 권한이 거부됨!");
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("파일 저장을 위해 저장소 권한을 허용해야 합니다.")));
+        return false;
+      }
     }
+    return true; // iOS는 권한 필요 없음
   }
 
   // ✅ 갤러리에서 이미지 선택하는 함수
