@@ -10,6 +10,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:math';
+import 'package:http/http.dart' as http;
+import 'dart:convert'; // ✅ jsonDecode를 사용하려면 필요함
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -202,73 +204,114 @@ class __CoffeeAnimationState extends State<_CoffeeAnimation>
 }
 
 // ✅ 이미지 선택 화면 (감성적인 스타일 적용)
+
 class ImagePickerScreen extends StatefulWidget {
   @override
   _ImagePickerScreenState createState() => _ImagePickerScreenState();
 }
 
 class _ImagePickerScreenState extends State<ImagePickerScreen> {
-  File? _image;
+  File? _image; // ✅ 선택한 원본 이미지
+  Uint8List? _processedImageBytes; // ✅ 변환된 테두리 이미지 데이터
+  String? _processedImageUrl;
+  final ImagePicker _picker = ImagePicker();
+  final String serverUrl =
+      "http://192.168.1.100:8000/upload/"; // 🔹 Python 서버 URL
 
+  // ✅ 갤러리에서 이미지 선택
   Future<void> pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(
+    final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
     );
 
     if (pickedFile != null) {
       setState(() {
         _image = File(pickedFile.path);
+        _processedImageUrl = null; // 새 이미지 선택 시 기존 결과 삭제
       });
+    }
+  }
+
+  // ✅ OpenCV 서버로 이미지 업로드 → 테두리 검출 요청
+  Future<void> extractEdges() async {
+    if (_image == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("이미지를 먼저 선택하세요!")));
+      return;
+    }
+
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(serverUrl));
+      request.files.add(
+        await http.MultipartFile.fromPath('file', _image!.path),
+      );
+
+      var response = await request.send();
+
+      // ✅ 서버 응답 디버깅 (콘솔에 출력)
+      print("🔹 서버 응답 코드: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        var responseData = await response.stream.toBytes();
+        print("✅ 서버 응답 정상!");
+
+        setState(() {
+          _processedImageBytes = responseData; // ✅ 이미지 데이터 업데이트
+        });
+      } else {
+        print("🚨 서버 오류: ${response.reasonPhrase}");
+      }
+    } catch (e) {
+      print("🚨 테두리 추출 중 오류 발생: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.brown[50], // ✅ 부드러운 배경색 적용
+      backgroundColor: Colors.brown[50],
       appBar: AppBar(
         backgroundColor: Colors.brown[300],
-        title: Text(
-          '이미지 선택',
-          style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: Stack(
-        children: [
-          Center(
-            child:
-                _image != null
-                    ? ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.file(
-                        _image!,
-                        width: 300,
-                        height: 300,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                    : Text(
-                      "이미지를 선택하세요!",
-                      style: GoogleFonts.lato(fontSize: 18),
-                    ),
+        title: Text('이미지 선택'),
+        actions: [
+          // ✅ 오른쪽 상단에 테두리 추출 버튼 추가
+          IconButton(
+            icon: Icon(Icons.filter_b_and_w), // 🔥 흑백 필터 아이콘 사용
+            onPressed: extractEdges, // 버튼 클릭 시 테두리 추출 실행
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 30),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.brown[400],
-                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                ),
-                onPressed: pickImage,
-                child: Text(
-                  "갤러리에서 이미지 선택",
-                  style: GoogleFonts.lato(fontSize: 16),
-                ),
-              ),
+        ],
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // ✅ 선택된 원본 이미지 표시
+          _image != null
+              ? Image.file(_image!, width: 200, height: 200, fit: BoxFit.cover)
+              : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)),
+
+          SizedBox(height: 20),
+
+          // ✅ 서버에서 변환된 테두리 이미지 즉시 표시
+          _processedImageBytes != null
+              ? Image.memory(
+                _processedImageBytes!,
+                width: 200,
+                height: 200,
+                fit: BoxFit.cover,
+              )
+              : Container(),
+
+          SizedBox(height: 20),
+
+          // ✅ 이미지 선택 버튼
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.brown[400],
+              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
             ),
+            onPressed: pickImage,
+            child: Text("갤러리에서 이미지 선택", style: TextStyle(fontSize: 16)),
           ),
         ],
       ),
