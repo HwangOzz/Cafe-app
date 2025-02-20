@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:math';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,7 +55,10 @@ class MainScreen extends StatelessWidget {
                   color: Colors.brown[800],
                 ),
               ),
-              Spacer(),
+
+              // ✅ 커피 PNG + 애니메이션 추가
+              Expanded(child: _CoffeeAnimation()),
+
               _buildButton(context, "이미지 선택", () {
                 Navigator.push(
                   context,
@@ -94,6 +98,104 @@ class MainScreen extends StatelessWidget {
       child: Text(
         text,
         style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+// ✅ 커피 애니메이션 (김 효과 수정)
+class _CoffeeAnimation extends StatefulWidget {
+  @override
+  __CoffeeAnimationState createState() => __CoffeeAnimationState();
+}
+
+class __CoffeeAnimationState extends State<_CoffeeAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _steamAnimation;
+  final Random _random = Random();
+
+  // ✅ 김의 랜덤 위치값을 고정시키기 위해 리스트로 저장
+  late List<double> xOffsets;
+  late List<double> sizes;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 5), // 🔥 속도를 더 느리게 조정 (3초 → 5초)
+    )..repeat(reverse: false);
+
+    // ✅ 김이 천천히 올라가면서 사라지도록 조정
+    _steamAnimation = Tween<double>(
+      begin: 0,
+      end: -120,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    // ✅ 랜덤 위치값을 미리 생성해서, 매 프레임마다 바뀌지 않도록 함
+    xOffsets = List.generate(5, (index) => _random.nextDouble() * 40 - 20);
+    sizes = List.generate(5, (index) => _random.nextDouble() * 25 + 20);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // ✅ 커피 PNG 이미지 크기 조정
+        Image.asset('assets/coffee.png', width: 180),
+
+        // ✅ 김(Steam) 효과 (애니메이션 적용)
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Stack(
+              children: List.generate(
+                5,
+                (index) => _buildSteam(index),
+              ), // 🔥 김 5개 생성
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ✅ 김 효과 (랜덤한 크기, 위치, 투명도 + 부드러운 애니메이션)
+  Widget _buildSteam(int index) {
+    return Transform.translate(
+      offset: Offset(
+        xOffsets[index],
+        _steamAnimation.value - 50,
+      ), // 🔥 김 위치를 위로 올리기
+      child: Opacity(
+        opacity: (1 - (_steamAnimation.value / -120)).clamp(
+          0,
+          1,
+        ), // 🔥 자연스럽게 사라지게
+        child: Container(
+          width: sizes[index], // ✅ 크기 랜덤
+          height: sizes[index],
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.4), // 🔥 흐린 효과
+            boxShadow: [
+              BoxShadow(
+                color: Colors.white.withOpacity(0.5), // 🔥 부드러운 빛 퍼지는 효과
+                blurRadius: 20, // 🔥 Blur 효과 증가
+                spreadRadius: 15,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
