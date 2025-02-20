@@ -216,7 +216,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   String? _processedImageUrl;
   final ImagePicker _picker = ImagePicker();
   final String serverUrl =
-      "http://192.168.1.100:8000/upload/"; // 🔹 Python 서버 URL
+      "http://192.168.0.126:8000/upload/"; // 🔹 Python 서버 URL
 
   // ✅ 갤러리에서 이미지 선택
   Future<void> pickImage() async {
@@ -242,28 +242,35 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     }
 
     try {
+      print("🔹 서버 요청 시작... URL: $serverUrl");
+
       var request = http.MultipartRequest('POST', Uri.parse(serverUrl));
       request.files.add(
         await http.MultipartFile.fromPath('file', _image!.path),
       );
 
       var response = await request.send();
+      var responseData = await response.stream.bytesToString();
 
-      // ✅ 서버 응답 디버깅 (콘솔에 출력)
-      print("🔹 서버 응답 코드: ${response.statusCode}");
+      print("🔹 서버 응답 상태 코드: ${response.statusCode}");
+      print("🔹 응답 데이터: ${responseData.substring(0, 100)}..."); // 너무 길면 앞부분만 출력
 
       if (response.statusCode == 200) {
-        var responseData = await response.stream.toBytes();
-        print("✅ 서버 응답 정상!");
+        var jsonResponse = jsonDecode(responseData);
+        String base64String = jsonResponse['image_data'];
+
+        print("✅ Base64 데이터 길이: ${base64String.length}");
 
         setState(() {
-          _processedImageBytes = responseData; // ✅ 이미지 데이터 업데이트
+          _processedImageBytes = base64Decode(base64String);
         });
+
+        print("✅ Base64 디코딩 완료, 이미지 변환 성공!");
       } else {
         print("🚨 서버 오류: ${response.reasonPhrase}");
       }
     } catch (e) {
-      print("🚨 테두리 추출 중 오류 발생: $e");
+      print("🚨 요청 중 오류 발생: $e");
     }
   }
 
