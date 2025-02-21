@@ -203,8 +203,7 @@ class __CoffeeAnimationState extends State<_CoffeeAnimation>
   }
 }
 
-// ✅ 이미지 선택 화면 (감성적인 스타일 적용)
-
+// ✅ 이미지 선택 화면 (변환된 이미지 저장 기능 추가)
 class ImagePickerScreen extends StatefulWidget {
   @override
   _ImagePickerScreenState createState() => _ImagePickerScreenState();
@@ -213,23 +212,37 @@ class ImagePickerScreen extends StatefulWidget {
 class _ImagePickerScreenState extends State<ImagePickerScreen> {
   File? _image; // ✅ 선택한 원본 이미지
   Uint8List? _processedImageBytes; // ✅ 변환된 테두리 이미지 데이터
-  String? _processedImageUrl;
   final ImagePicker _picker = ImagePicker();
   final String serverUrl =
       "http://192.168.0.126:8000/upload/"; // 🔹 Python 서버 URL
 
-  // ✅ 갤러리에서 이미지 선택
-  Future<void> pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
+  // ✅ 저장소 권한 확인 함수 (그리기 화면과 동일하게 수정)
+  Future<bool> _requestPermission() async {
+    if (Platform.isAndroid) {
+      // ✅ 먼저 권한이 이미 허용되었는지 확인
+      if (await Permission.storage.isGranted ||
+          await Permission.manageExternalStorage.isGranted) {
+        print("✅ 저장소 권한이 이미 허용됨");
+        return true;
+      }
 
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-        _processedImageUrl = null; // 새 이미지 선택 시 기존 결과 삭제
-      });
+      // ❗ 권한 요청 진행
+      PermissionStatus storageStatus = await Permission.storage.request();
+      PermissionStatus manageStorageStatus =
+          await Permission.manageExternalStorage.request();
+
+      if (storageStatus.isGranted || manageStorageStatus.isGranted) {
+        print("✅ 새로 저장소 권한이 허용됨!");
+        return true;
+      } else {
+        print("🚨 저장소 권한이 거부됨!");
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("파일 저장을 위해 저장소 권한을 허용해야 합니다.")));
+        return false;
+      }
     }
+    return true; // iOS는 권한 필요 없음
   }
 
   // ✅ OpenCV 서버로 이미지 업로드 → 테두리 검출 요청
@@ -270,6 +283,63 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     }
   }
 
+  // ✅ 갤러리에서 이미지 선택
+  Future<void> pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+        _processedImageBytes = null; // 새 이미지 선택 시 기존 변환된 이미지 삭제
+      });
+    }
+  }
+
+  // ✅ 변환된 이미지 저장 함수 (권한 체크 수정)
+  Future<void> _saveProcessedDrawing() async {
+    try {
+      if (_processedImageBytes == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("변환된 이미지가 없습니다!")));
+        return;
+      }
+
+      // ✅ 저장소 권한 확인
+      bool hasPermission = await _requestPermission();
+      if (!hasPermission) {
+        print("🚨 저장 중단: 권한이 없습니다.");
+        return;
+      }
+
+      // ✅ 저장할 경로 설정
+      String cafeFolderPath = "/storage/emulated/0/CAFE";
+      Directory cafeDir = Directory(cafeFolderPath);
+      if (!await cafeDir.exists()) {
+        await cafeDir.create(recursive: true);
+      }
+
+      // ✅ 파일 저장
+      String filePath =
+          "$cafeFolderPath/converted_${DateTime.now().millisecondsSinceEpoch}.png";
+      File file = File(filePath);
+      await file.writeAsBytes(_processedImageBytes!);
+
+      print("✅ 저장 성공! 파일 경로: $filePath");
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("이미지 저장 완료!")));
+    } catch (e) {
+      print("🚨 저장 실패: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("저장 중 오류가 발생했습니다.")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -278,18 +348,14 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
         backgroundColor: Colors.brown[300],
         title: Text('이미지 선택'),
         actions: [
-          // ✅ 오른쪽 상단에 테두리 추출 버튼 추가
-          IconButton(
-            icon: Icon(Icons.filter_b_and_w), // 🔥 흑백 필터 아이콘 사용
-            onPressed: extractEdges, // 버튼 클릭 시 테두리 추출 실행
-          ),
+          // ✅ 테두리 추출 버튼
+          IconButton(icon: Icon(Icons.filter_b_and_w), onPressed: extractEdges),
         ],
       ),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // 화면 중앙 정렬
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ✅ 선택된 원본 이미지 (위쪽)
             _image != null
                 ? Column(
                   children: [
@@ -311,8 +377,8 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 )
                 : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)),
 
-            SizedBox(height: 20), // 간격 추가
-            // ✅ 변환된 테두리 이미지 (아래쪽)
+            SizedBox(height: 20),
+
             _processedImageBytes != null
                 ? Column(
                   children: [
@@ -332,9 +398,10 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                     ),
                   ],
                 )
-                : Container(), // 아직 변환 이미지가 없으면 빈 컨테이너
+                : Container(),
 
-            SizedBox(height: 20), // 간격 추가
+            SizedBox(height: 20),
+
             // ✅ 이미지 선택 버튼
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -344,6 +411,20 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
               onPressed: pickImage,
               child: Text("갤러리에서 이미지 선택", style: TextStyle(fontSize: 16)),
             ),
+
+            SizedBox(height: 10),
+
+            // ✅ 변환된 이미지 저장 버튼 (권한 체크 개선)
+            _processedImageBytes != null
+                ? ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.brown[400],
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  ),
+                  onPressed: _saveProcessedDrawing,
+                  child: Text("변환된 이미지 저장", style: TextStyle(fontSize: 16)),
+                )
+                : Container(),
           ],
         ),
       ),
