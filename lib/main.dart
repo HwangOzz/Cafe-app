@@ -249,25 +249,21 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
         await http.MultipartFile.fromPath('file', _image!.path),
       );
 
-      var response = await request.send();
-      var responseData = await response.stream.bytesToString();
+      print("🔹 HTTP 요청 준비 완료, 전송 시도 중...");
 
-      print("🔹 서버 응답 상태 코드: ${response.statusCode}");
-      print("🔹 응답 데이터: ${responseData.substring(0, 100)}..."); // 너무 길면 앞부분만 출력
+      var response = await request.send();
+
+      print("🔹 HTTP 응답 수신 완료! 상태 코드: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        var jsonResponse = jsonDecode(responseData);
-        String base64String = jsonResponse['image_data'];
-
-        print("✅ Base64 데이터 길이: ${base64String.length}");
-
+        var responseData = await response.stream.toBytes();
         setState(() {
-          _processedImageBytes = base64Decode(base64String);
+          _processedImageBytes = responseData;
         });
-
-        print("✅ Base64 디코딩 완료, 이미지 변환 성공!");
+        print("✅ 테두리 이미지 변환 성공!");
       } else {
-        print("🚨 서버 오류: ${response.reasonPhrase}");
+        print("🚨 서버 오류 발생! 상태 코드: ${response.statusCode}");
+        print("🚨 오류 내용: ${await response.stream.bytesToString()}");
       }
     } catch (e) {
       print("🚨 요청 중 오류 발생: $e");
