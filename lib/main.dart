@@ -285,38 +285,67 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
           ),
         ],
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // ✅ 선택된 원본 이미지 표시
-          _image != null
-              ? Image.file(_image!, width: 200, height: 200, fit: BoxFit.cover)
-              : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center, // 화면 중앙 정렬
+          children: [
+            // ✅ 선택된 원본 이미지 (위쪽)
+            _image != null
+                ? Column(
+                  children: [
+                    Text(
+                      "원본 이미지",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Image.file(
+                      _image!,
+                      width: 200,
+                      height: 200,
+                      fit: BoxFit.cover,
+                    ),
+                  ],
+                )
+                : Text("이미지를 선택하세요!", style: TextStyle(fontSize: 18)),
 
-          SizedBox(height: 20),
+            SizedBox(height: 20), // 간격 추가
+            // ✅ 변환된 테두리 이미지 (아래쪽)
+            _processedImageBytes != null
+                ? Column(
+                  children: [
+                    Text(
+                      "변환된 이미지",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Image.memory(
+                      _processedImageBytes!,
+                      width: 200,
+                      height: 200,
+                      fit: BoxFit.cover,
+                    ),
+                  ],
+                )
+                : Container(), // 아직 변환 이미지가 없으면 빈 컨테이너
 
-          // ✅ 서버에서 변환된 테두리 이미지 즉시 표시
-          _processedImageBytes != null
-              ? Image.memory(
-                _processedImageBytes!,
-                width: 200,
-                height: 200,
-                fit: BoxFit.cover,
-              )
-              : Container(),
-
-          SizedBox(height: 20),
-
-          // ✅ 이미지 선택 버튼
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.brown[400],
-              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+            SizedBox(height: 20), // 간격 추가
+            // ✅ 이미지 선택 버튼
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown[400],
+                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              ),
+              onPressed: pickImage,
+              child: Text("갤러리에서 이미지 선택", style: TextStyle(fontSize: 16)),
             ),
-            onPressed: pickImage,
-            child: Text("갤러리에서 이미지 선택", style: TextStyle(fontSize: 16)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

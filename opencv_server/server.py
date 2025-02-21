@@ -16,52 +16,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔹 테두리 감지 함수 (더 세밀하게!)
-def detect_edges(image_data: bytes):
-    # OpenCV로 바이트 데이터를 이미지로 변환
+# 🔹 **더 세밀하게 외곽선 감지하는 함수**
+def detect_cartoon_edges(image_data: bytes):
+    # ✅ 1. 이미지 읽기
     nparr = np.frombuffer(image_data, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    # ✅ 1. 흑백 변환 (Grayscale)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # ✅ 2. 이미지 크기 조정 (속도 최적화)
+    image = cv2.resize(image, (512, 512))
 
-    # ✅ 2. 히스토그램 평활화 적용 (명암 대비 향상)
-    equalized = cv2.equalizeHist(gray)
+    # ✅ 3. **부드러운 효과 추가 (Bilateral Filter)**
+    filtered = cv2.bilateralFilter(image, d=9, sigmaColor=100, sigmaSpace=100)
 
-    # ✅ 3. 블러 적용 (GaussianBlur) → 노이즈 제거
-    blurred = cv2.GaussianBlur(equalized, (5, 5), 0)
+    # ✅ 4. **흑백 변환 (Grayscale)**
+    gray = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
 
-    # ✅ 4. Canny Edge Detection 적용
-    edges_canny = cv2.Canny(blurred, 50, 150)
+    # ✅ 5. **명암 조정 (히스토그램 평활화)**
+    gray = cv2.equalizeHist(gray)
 
-    # ✅ 5. 적응형 이진화 적용 (Adaptive Threshold)
+    # ✅ 6. **노이즈 제거 (Median Blur)**
+    blurred = cv2.medianBlur(gray, 5)
+
+    # ✅ 7. **Canny Edge Detection (더 세밀하게 조정)**
+    edges_canny = cv2.Canny(blurred, 10, 100)
+
+    # ✅ 8. **적응형 이진화 적용 (Adaptive Threshold)**
     edges_threshold = cv2.adaptiveThreshold(
-        equalized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV, 11, 2
+        blurred, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+        cv2.THRESH_BINARY, 15, 4  # 블록 크기 15, C 값 4로 변경
     )
 
-    # ✅ 6. 두 개의 결과를 합침 (Canny + Threshold)
-    combined_edges = cv2.bitwise_or(edges_canny, edges_threshold)
+    # ✅ 9. **Canny + Adaptive Threshold 조합**
+    combined_edges = cv2.bitwise_and(edges_threshold, edges_canny)
 
-    # ✅ 7. 색상 반전 (흰 배경 + 검은 선)
+    # ✅ 10. **색 반전 (배경 흰색, 선 검은색)**
     final_result = cv2.bitwise_not(combined_edges)
 
-    # ✅ 8. 결과 이미지를 PNG 바이너리 데이터로 변환
+    # ✅ 11. PNG 변환 후 반환
     _, encoded_img = cv2.imencode('.png', final_result)
-
     return encoded_img.tobytes()
 
-# 🔹 API 엔드포인트: 이미지 업로드 & 테두리 감지 실행
+
+# 🔹 API 엔드포인트: 이미지 업로드 & 외곽선 추출
 @app.post("/upload/")
 async def upload_image(file: UploadFile = File(...)):
     try:
         image_data = await file.read()
         print(f"✅ [POST] 요청 받음, 이미지 크기: {len(image_data)} 바이트")
 
-        edge_image = detect_edges(image_data)
-        print(f"✅ 테두리 감지 완료, 변환된 이미지 크기: {len(edge_image)} 바이트")
+        edge_image = detect_cartoon_edges(image_data)
+        print(f"✅ 외곽선 감지 완료, 변환된 이미지 크기: {len(edge_image)} 바이트")
 
-        # ✅ 바이너리 PNG 데이터 그대로 반환 (Base64 X)
         return Response(content=edge_image, media_type="image/png")
 
     except Exception as e:
